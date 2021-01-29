@@ -60,29 +60,32 @@ export function mergeExternalObjects(
   const newReceiverMap = target[RECEIVER_MAP_SYMBOL];
   const newUnpathedErrors = target[UNPATHED_ERRORS_SYMBOL];
 
-  sources.forEach((source, index) => {
-    const fieldNodes = collectFields(
-      {
-        schema,
-        variableValues: {},
-        fragments: {},
-      } as GraphQLExecutionContext,
-      schema.getType(typeName) as GraphQLObjectType,
-      selectionSets[index],
-      Object.create(null),
-      Object.create(null)
-    );
+  for (let index = 0; index < sources.length; index++) {
+    const source = sources[index];
 
     if (source instanceof GraphQLError || source === null) {
+      const fieldNodes = collectFields(
+        {
+          schema,
+          variableValues: {},
+          fragments: {},
+        } as GraphQLExecutionContext,
+        schema.getType(typeName) as GraphQLObjectType,
+        selectionSets[index],
+        Object.create(null),
+        Object.create(null)
+      );
+
       Object.keys(fieldNodes).forEach(responseKey => {
         target[responseKey] =
           source instanceof GraphQLError ? relocatedError(source, path.concat([responseKey])) : null;
       });
-      return;
+
+      continue;
     }
 
     const objectSubschema = source[OBJECT_SUBSCHEMA_SYMBOL];
-    Object.keys(fieldNodes).forEach(responseKey => {
+    Object.keys(source).forEach(responseKey => {
       target[responseKey] = source[responseKey];
       newFieldSubschemaMap[responseKey] = objectSubschema;
     });
@@ -90,7 +93,9 @@ export function mergeExternalObjects(
     if (isExternalObject(source)) {
       const receiverMap = source[RECEIVER_MAP_SYMBOL];
       receiverMap.forEach((receiver, subschema) => {
-        newReceiverMap.set(subschema, receiver);
+        if (receiver) {
+          newReceiverMap.set(subschema, receiver);
+        }
       });
 
       newUnpathedErrors.push(...source[UNPATHED_ERRORS_SYMBOL]);
@@ -100,7 +105,7 @@ export function mergeExternalObjects(
         newFieldSubschemaMap[responseKey] = fieldSubschemaMap[responseKey];
       });
     }
-  });
+  }
 
   return target;
 }

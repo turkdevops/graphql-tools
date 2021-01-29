@@ -187,6 +187,10 @@ export class Receiver {
       const asyncResult = payload.value;
 
       if (asyncResult != null && asyncResult.label !== undefined && asyncResult.path?.[0] === this.fieldName) {
+        // TODO:
+        // We will need to break out CheckResultAndHandleErrors from the other transforms.
+        // because we don't want to run type merging on the patches that come in
+        // we can consider whether to break out all the built-in delegation transforms into delegateToSchema proper.
         const transformedResult = this.resultTransformer(asyncResult);
         const pathKey = asyncResult.path.join('.');
         this.pubsub.publish(pathKey, transformedResult);
@@ -194,7 +198,9 @@ export class Receiver {
         if (externalValue != null) {
           this.externalValues[pathKey] = mergeExternalObjects(
             this.info.schema,
-            // TODO: is this the right path to pass to mergeExternalObjects?
+            // TODO:
+            // verify that  this is the right path to pass to mergeExternalObjects...
+            // seems ok so far...
             asyncResult.path,
             transformedResult.__typename,
             externalValue,
