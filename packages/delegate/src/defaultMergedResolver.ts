@@ -31,14 +31,14 @@ export function defaultMergedResolver(
     return defaultFieldResolver(parent, args, context, info);
   }
 
-  const data = parent[responseKey];
   const subschema = getSubschema(parent, responseKey);
   const receiver = getReceiver(parent, subschema);
 
-  if (data === undefined && receiver !== undefined) {
+  if (receiver !== undefined) {
     return receiver.request(info);
   }
 
+  const data = parent[responseKey];
   const unpathedErrors = getUnpathedErrors(parent);
   return resolveExternalValue(data, unpathedErrors, subschema, context, info, receiver);
 }

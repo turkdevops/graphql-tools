@@ -5,13 +5,12 @@ import ExpandAbstractTypes from './transforms/ExpandAbstractTypes';
 import WrapConcreteTypes from './transforms/WrapConcreteTypes';
 import FilterToSchema from './transforms/FilterToSchema';
 import AddTypenameToAbstract from './transforms/AddTypenameToAbstract';
-import CheckResultAndHandleErrors from './transforms/CheckResultAndHandleErrors';
 import AddArgumentsAsVariables from './transforms/AddArgumentsAsVariables';
 import StoreDeferredSelectionSets from './transforms/StoreDeferredSelectionSets';
 import UndeferSelections from './transforms/UndeferSelections';
 
 export function defaultDelegationBinding(delegationContext: DelegationContext): Array<Transform> {
-  let delegationTransforms: Array<Transform> = [new CheckResultAndHandleErrors()];
+  let delegationTransforms: Array<Transform> = [];
 
   const info = delegationContext.info;
   const stitchingInfo: StitchingInfo = info?.schema.extensions?.stitchingInfo;

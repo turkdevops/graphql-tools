@@ -123,11 +123,8 @@ describe('defer support', () => {
         }
       `,
       resolvers: {
-        Object: {
-          field1: () => 'field1',
-        },
         Query: {
-          object: () => ({ id: '1' }),
+          object: () => ({ id: '1', field1: 'field1' }),
         }
       },
     });
@@ -143,11 +140,8 @@ describe('defer support', () => {
         }
       `,
       resolvers: {
-        Object: {
-          field2: () => 'field2',
-        },
         Query: {
-          object: () => ({ id: '1' }),
+          object: () => ({ id: '1', field2: 'field2' }),
         }
       },
     });
@@ -208,6 +202,133 @@ describe('defer support', () => {
         field2: 'field2',
       },
       hasNext: false,
+      path: ['object'],
+    });
+  });
+
+  test('should work for nested merged fields', async () => {
+    const schema1 = makeExecutableSchema({
+      typeDefs: `
+        type Object {
+          field: Subtype
+        }
+        type Subtype {
+          id: ID
+          subfield1: String
+        }
+        type Query {
+          object: Object
+          field(id: ID): Subtype
+        }
+      `,
+      resolvers: {
+        Object: {
+          field: () => ({ id: '1', subfield1: 'subfield1'}),
+        },
+        Query: {
+          object: () => ({}),
+          field: () => ({}),
+        },
+      },
+    });
+
+    const schema2 = makeExecutableSchema({
+      typeDefs: `
+        type Object {
+          field: Subtype
+        }
+        type Subtype {
+          id: ID
+          subfield2: String
+        }
+        type Query {
+          object: Object
+          field(id: ID): Subtype
+        }
+      `,
+      resolvers: {
+        Object: {
+          field: () => ({ id: '1', subfield1: 'subfield2'}),
+        },
+        Query: {
+          object: () => ({}),
+          field: () => ({}),
+        },
+      },
+    });
+
+    const stitchedSchema = stitchSchemas({
+      subschemas: [{
+        schema: schema1,
+        merge: {
+          Subtype: {
+            selectionSet: '{ id }',
+            fieldName: 'field',
+            args: ({ id }) => ({ id }),
+          },
+        },
+      }, {
+        schema: schema2,
+        merge: {
+          Subtype: {
+            selectionSet: '{ id }',
+            fieldName: 'field',
+            args: ({ id }) => ({ id }),
+          },
+        },
+      }],
+    });
+
+    const result = await graphql(
+      stitchedSchema,
+      `
+        query {
+          object {
+            ... on Object @defer {
+              field {
+                subfield1
+              }
+            }
+            ... on Object @defer {
+              field {
+                subfield2
+              }
+            }
+          }
+        }
+      `,
+    );
+
+    expect((result as ExecutionResult).errors).toBeUndefined();
+
+    const results = [];
+
+    if (isAsyncIterable(result)) {
+      for await (const patch of result) {
+        results.push(patch);
+      }
+    }
+
+    expect(results[0]).toEqual({
+      data: { object: {} },
+      hasNext: true,
+    });
+    expect(results[1]).toEqual({
+      data: {
+        field: {
+          subfield1: 'subfield1',
+        },
+      },
+      hasNext: true,
+      path: ['object'],
+    });
+    expect(results[2]).toEqual({
+      data: {
+        field: {
+          subfield2: 'subfield2',
+        },
+      },
+      hasNext: true,
       path: ['object'],
     });
   });

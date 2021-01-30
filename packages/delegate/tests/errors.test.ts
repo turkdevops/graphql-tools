@@ -3,7 +3,7 @@ import { GraphQLError, locatedError, graphql } from 'graphql';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { ExecutionResult } from '@graphql-tools/utils';
 import { stitchSchemas } from '@graphql-tools/stitch';
-import { CheckResultAndHandleErrors, DelegationContext } from '@graphql-tools/delegate';
+import { DelegationContext, externalValueFromResult } from '@graphql-tools/delegate';
 
 import { UNPATHED_ERRORS_SYMBOL } from '../src/symbols';
 import { getUnpathedErrors } from '../src/externalObjects';
@@ -37,12 +37,10 @@ describe('Errors', () => {
       const result = {
         errors: [new GraphQLError('Test error')],
       };
-      const transform = new CheckResultAndHandleErrors();
       try {
-        transform.transformResult(
+        externalValueFromResult(
           result,
           { fieldName: 'responseKey' } as unknown as DelegationContext,
-          {}
         );
       } catch (e) {
         expect(e.message).toEqual('Test error');
@@ -54,12 +52,10 @@ describe('Errors', () => {
       const result = {
         errors: [new ErrorWithExtensions('Test error', 'UNAUTHENTICATED')],
       };
-      const transform = new CheckResultAndHandleErrors();
       try {
-        transform.transformResult(
+        externalValueFromResult(
           result,
           { fieldName: 'responseKey '} as unknown as DelegationContext,
-          {}
         );
       } catch (e) {
         expect(e.message).toEqual('Test error');
@@ -72,12 +68,10 @@ describe('Errors', () => {
       const result = {
         errors: [new GraphQLError('Error1'), new GraphQLError('Error2')],
       };
-      const transform = new CheckResultAndHandleErrors();
       try {
-        transform.transformResult(
+        externalValueFromResult(
           result,
           { fieldName: 'reponseKey' } as unknown as DelegationContext,
-          {}
         );
       } catch (e) {
         expect(e.message).toEqual('Error1\nError2');

@@ -60,32 +60,29 @@ export function mergeExternalObjects(
   const newReceiverMap = target[RECEIVER_MAP_SYMBOL];
   const newUnpathedErrors = target[UNPATHED_ERRORS_SYMBOL];
 
-  for (let index = 0; index < sources.length; index++) {
-    const source = sources[index];
+  sources.forEach((source, index) => {
+    const fieldNodes = collectFields(
+      {
+        schema,
+        variableValues: {},
+        fragments: {},
+      } as GraphQLExecutionContext,
+      schema.getType(typeName) as GraphQLObjectType,
+      selectionSets[index],
+      Object.create(null),
+      Object.create(null)
+    );
 
     if (source instanceof GraphQLError || source === null) {
-      const fieldNodes = collectFields(
-        {
-          schema,
-          variableValues: {},
-          fragments: {},
-        } as GraphQLExecutionContext,
-        schema.getType(typeName) as GraphQLObjectType,
-        selectionSets[index],
-        Object.create(null),
-        Object.create(null)
-      );
-
       Object.keys(fieldNodes).forEach(responseKey => {
         target[responseKey] =
           source instanceof GraphQLError ? relocatedError(source, path.concat([responseKey])) : null;
       });
-
-      continue;
+      return;
     }
 
     const objectSubschema = source[OBJECT_SUBSCHEMA_SYMBOL];
-    Object.keys(source).forEach(responseKey => {
+    Object.keys(fieldNodes).forEach(responseKey => {
       target[responseKey] = source[responseKey];
       newFieldSubschemaMap[responseKey] = objectSubschema;
     });
@@ -105,7 +102,7 @@ export function mergeExternalObjects(
         newFieldSubschemaMap[responseKey] = fieldSubschemaMap[responseKey];
       });
     }
-  }
+  });
 
   return target;
 }

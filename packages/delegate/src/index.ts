@@ -5,6 +5,7 @@ export * from './defaultMergedResolver';
 export * from './delegateToSchema';
 export * from './delegationBindings';
 export * from './externalObjects';
+export * from './externalValueFromResult';
 export * from './resolveExternalValue';
 export * from './subschemaConfig';
 export * from './transforms';

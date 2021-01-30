@@ -1,4 +1,3 @@
-export { default as CheckResultAndHandleErrors } from './CheckResultAndHandleErrors';
 export { default as ExpandAbstractTypes } from './ExpandAbstractTypes';
 export { default as VisitSelectionSets } from './VisitSelectionSets';
 export { default as AddSelectionSets } from './AddSelectionSets';

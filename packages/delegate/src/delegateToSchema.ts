@@ -38,6 +38,7 @@ import { createRequestFromInfo, getDelegatingOperation } from './createRequest';
 import { Transformer } from './Transformer';
 import { memoize2 } from './memoize';
 import { Receiver } from './Receiver';
+import { externalValueFromResult } from './externalValueFromResult';
 
 export function delegateToSchema(options: IDelegateToSchemaOptions): any {
   const {
@@ -196,7 +197,7 @@ export function delegateRequest({
     context,
     info,
   }).then((subscriptionResult: AsyncIterableIterator<ExecutionResult> | ExecutionResult) =>
-    handleSubscriptionResult(subscriptionResult, targetFieldName, originalResult =>
+    handleSubscriptionResult(subscriptionResult, delegationContext, originalResult =>
       transformer.transformResult(originalResult)
     )
   );
@@ -205,28 +206,26 @@ export function delegateRequest({
 function handleExecutionResult(
   executionResult: ExecutionResult | AsyncIterableIterator<AsyncExecutionResult>,
   delegationContext: DelegationContext,
-  resultTransformer: (originalResult: ExecutionResult) => any
+  resultTransformer: (originalResult: ExecutionResult) => ExecutionResult
 ): any {
   if (isAsyncIterable(executionResult)) {
     const receiver = new Receiver(executionResult, delegationContext, resultTransformer);
 
-    delegationContext.receiver = receiver;
-
     return receiver.getInitialResult();
   }
 
-  return resultTransformer(executionResult);
+  return externalValueFromResult(resultTransformer(executionResult), delegationContext);
 }
 
 function handleSubscriptionResult(
   subscriptionResult: AsyncIterableIterator<ExecutionResult> | ExecutionResult,
-  targetFieldName: string,
+  delegationContext: DelegationContext,
   resultTransformer: (originalResult: ExecutionResult) => any
-): AsyncIterableIterator<ExecutionResult> {
+): ExecutionResult | AsyncIterableIterator<ExecutionResult> {
   if (isAsyncIterable(subscriptionResult)) {
     // "subscribe" to the subscription result and map the result through the transforms
     return mapAsyncIterator<ExecutionResult, any>(subscriptionResult, originalResult => ({
-      [targetFieldName]: resultTransformer(originalResult),
+      [delegationContext.fieldName]: externalValueFromResult(resultTransformer(originalResult), delegationContext),
     }));
   }
 

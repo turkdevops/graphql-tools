@@ -63,7 +63,6 @@ export interface DelegationContext {
   transformedSchema: GraphQLSchema;
   skipTypeMerging: boolean;
   deferredSelectionSets: Record<string, SelectionSetNode>;
-  receiver?: Receiver;
 }
 
 export type DelegationBinding = (delegationContext: DelegationContext) => Array<Transform>;
