@@ -1,8 +1,8 @@
-import { GraphQLError, responsePathAsArray, locatedError, ExecutionPatchResult } from 'graphql';
+import { GraphQLError, responsePathAsArray, locatedError } from 'graphql';
 
 import AggregateError from '@ardatan/aggregate-error';
 
-import { ExecutionResult, relocatedError } from '@graphql-tools/utils';
+import { ExecutionPatchResult, ExecutionResult, relocatedError } from '@graphql-tools/utils';
 
 import { DelegationContext } from './types';
 import { resolveExternalValue } from './resolveExternalValue';
@@ -13,28 +13,45 @@ export function externalValueFromResult(
   delegationContext: DelegationContext,
   receiver?: Receiver
 ): any {
-  const {
-    context,
-    info,
-    fieldName: responseKey,
-    subschema,
-    returnType,
-    skipTypeMerging,
-    onLocatedError,
-  } = delegationContext;
+  return externalValueFromDataAndErrors(
+    originalResult.data?.[delegationContext.fieldName],
+    originalResult.errors ?? [],
+    delegationContext,
+    receiver
+  );
+}
 
-  const { data, unpathedErrors } = mergeDataAndErrors(
-    originalResult.data == null
-      ? undefined
-      : (originalResult as ExecutionPatchResult)?.path?.[0] === responseKey
-      ? originalResult.data
-      : originalResult.data[responseKey],
-    originalResult.errors == null ? [] : originalResult.errors,
+export function externalValueFromPatchResult(
+  originalResult: ExecutionPatchResult,
+  delegationContext: DelegationContext,
+  receiver: Receiver
+): any {
+  return externalValueFromDataAndErrors(
+    originalResult.data,
+    originalResult.errors ?? [],
+    delegationContext,
+    receiver,
+    true
+  );
+}
+
+function externalValueFromDataAndErrors(
+  data: any,
+  errors: ReadonlyArray<GraphQLError>,
+  delegationContext: DelegationContext,
+  receiver?: Receiver,
+  skipTypeMerging = delegationContext.skipTypeMerging
+): any {
+  const { context, info, subschema, returnType, onLocatedError } = delegationContext;
+
+  const { data: newData, unpathedErrors } = mergeDataAndErrors(
+    data,
+    errors,
     info ? responsePathAsArray(info.path) : undefined,
     onLocatedError
   );
 
-  return resolveExternalValue(data, unpathedErrors, subschema, context, info, receiver, returnType, skipTypeMerging);
+  return resolveExternalValue(newData, unpathedErrors, subschema, context, info, receiver, returnType, skipTypeMerging);
 }
 
 export function mergeDataAndErrors(

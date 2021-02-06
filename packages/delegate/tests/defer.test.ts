@@ -54,7 +54,7 @@ describe('defer support', () => {
     });
   });
 
-  test('should work for nested fields', async () => {
+  test('should work for proxied fields', async () => {
     const schema = makeExecutableSchema({
       typeDefs: `
         type Object {
@@ -111,7 +111,7 @@ describe('defer support', () => {
     });
   });
 
-  test('should work for merged fields', async () => {
+  test('should work for proxied fields from multiple schemas', async () => {
     const schema1 = makeExecutableSchema({
       typeDefs: `
         type Object {
@@ -206,7 +206,7 @@ describe('defer support', () => {
     });
   });
 
-  test('should work for nested merged fields', async () => {
+  test('should work for nested proxied fields from multiple schemas', async () => {
     const schema1 = makeExecutableSchema({
       typeDefs: `
         type Object {
@@ -222,12 +222,9 @@ describe('defer support', () => {
         }
       `,
       resolvers: {
-        Object: {
-          field: () => ({ id: '1', subfield1: 'subfield1'}),
-        },
         Query: {
-          object: () => ({}),
-          field: () => ({}),
+          object: () => ({ field: { id: '1', subfield1: 'subfield1'} }),
+          field: () => ({ id: '1', subfield1: 'subfield1'}),
         },
       },
     });
@@ -247,12 +244,9 @@ describe('defer support', () => {
         }
       `,
       resolvers: {
-        Object: {
-          field: () => ({ id: '1', subfield1: 'subfield2'}),
-        },
         Query: {
-          object: () => ({}),
-          field: () => ({}),
+          object: () => ({ field: { id: '1', subfield2: 'subfield2'} }),
+          field: () => ({ id: '1', subfield2: 'subfield2'}),
         },
       },
     });
@@ -328,7 +322,7 @@ describe('defer support', () => {
           subfield2: 'subfield2',
         },
       },
-      hasNext: true,
+      hasNext: false,
       path: ['object'],
     });
   });

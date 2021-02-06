@@ -13,7 +13,7 @@ export class InMemoryPubSub<T> implements PubSub<T> {
   publish(topic: string, value: T): void {
     let channel = this.channels[topic];
 
-    if (channel == null) {
+    if (channel === undefined) {
       channel = this.channels[topic] = new InMemoryChannel();
     }
 
@@ -23,7 +23,7 @@ export class InMemoryPubSub<T> implements PubSub<T> {
   unpublish(topic: string, reason?: any): void {
     const channel = this.channels[topic];
 
-    if (channel == null) {
+    if (channel === undefined) {
       return;
     }
 
@@ -35,7 +35,7 @@ export class InMemoryPubSub<T> implements PubSub<T> {
   subscribe(topic: string, buffer?: RepeaterBuffer): Repeater<T> {
     let channel = this.channels[topic];
 
-    if (this.channels[topic] == null) {
+    if (this.channels[topic] === undefined) {
       channel = this.channels[topic] = new InMemoryChannel();
     }
 

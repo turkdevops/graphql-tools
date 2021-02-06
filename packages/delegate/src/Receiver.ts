@@ -1,32 +1,25 @@
-import {
-  ExecutionPatchResult,
-  ExecutionResult,
-  GraphQLResolveInfo,
-  GraphQLSchema,
-  SelectionSetNode,
-  responsePathAsArray,
-} from 'graphql';
+import { ExecutionPatchResult, ExecutionResult, GraphQLResolveInfo, responsePathAsArray } from 'graphql';
 
 import { AsyncExecutionResult } from '@graphql-tools/utils';
 import { InMemoryPubSub } from '@graphql-tools/pubsub';
 
-import { DelegationContext, ExternalObject, SubschemaConfig } from './types';
-import { getUnpathedErrors, mergeExternalObjects } from './externalObjects';
+import { DelegationContext, ExternalObject } from './types';
+import { getReceiver, getSubschema, getUnpathedErrors } from './externalObjects';
 import { resolveExternalValue } from './resolveExternalValue';
-import { externalValueFromResult } from './externalValueFromResult';
+import { externalValueFromResult, externalValueFromPatchResult } from './externalValues';
+import DataLoader from 'dataloader';
 
 export class Receiver {
   private readonly asyncIterable: AsyncIterable<AsyncExecutionResult>;
   private readonly delegationContext: DelegationContext;
   private readonly fieldName: string;
-  private readonly subschema: GraphQLSchema | SubschemaConfig;
   private readonly context: Record<string, any>;
-  private readonly info: GraphQLResolveInfo;
-  private readonly deferredSelectionSets: Record<string, SelectionSetNode>;
   private readonly resultTransformer: (originalResult: ExecutionResult) => any;
   private readonly initialResultDepth: number;
   private readonly pubsub: InMemoryPubSub<ExternalObject>;
-  private externalValues: Record<string, any>;
+  private externalValues: Record<string, Array<any>>;
+  private loaders: Record<string, DataLoader<GraphQLResolveInfo, any>>;
+  private infos: Record<string, Record<string, GraphQLResolveInfo>>;
   private iterating: boolean;
   private numRequests: number;
 
@@ -38,19 +31,18 @@ export class Receiver {
     this.asyncIterable = asyncIterable;
 
     this.delegationContext = delegationContext;
-    const { fieldName, subschema, context, info, deferredSelectionSets } = delegationContext;
+    const { fieldName, context, info } = delegationContext;
 
     this.fieldName = fieldName;
-    this.subschema = subschema;
     this.context = context;
-    this.info = info;
-    this.deferredSelectionSets = deferredSelectionSets;
 
     this.resultTransformer = resultTransformer;
     this.initialResultDepth = info ? responsePathAsArray(info.path).length - 1 : 0;
-    this.externalValues = Object.create(null);
     this.pubsub = new InMemoryPubSub();
 
+    this.externalValues = Object.create(null);
+    this.loaders = Object.create(null);
+    this.infos = Object.create(null);
     this.iterating = false;
     this.numRequests = 0;
   }
@@ -58,26 +50,62 @@ export class Receiver {
   public async getInitialResult(): Promise<ExecutionResult> {
     const asyncIterator = this.asyncIterable[Symbol.asyncIterator]();
     const payload = await asyncIterator.next();
-    // TODO:
-    // initial result probably also needs to be saved to external values
-    return externalValueFromResult(this.resultTransformer(payload.value), this.delegationContext, this);
+    const initialResult = externalValueFromResult(this.resultTransformer(payload.value), this.delegationContext, this);
+    this.externalValues[this.fieldName] = [initialResult];
+    return initialResult;
   }
 
-  public async request(info: GraphQLResolveInfo): Promise<any> {
-    const pathArray = responsePathAsArray(info.path).slice(this.initialResultDepth);
-    const responseKey = pathArray.pop() as string;
-    const pathKey = pathArray.join('.');
+  public request(info: GraphQLResolveInfo): Promise<any> {
+    const path = responsePathAsArray(info.path).slice(this.initialResultDepth);
+    const pathKey = path.join('.');
+    let loader = this.loaders[pathKey];
 
-    const externalValue = this.externalValues[pathKey];
-    if (externalValue != null) {
-      const object = getValue(externalValue, pathArray);
-      if (object !== undefined) {
-        const data = object[responseKey];
+    if (loader === undefined) {
+      loader = this.loaders[pathKey] = new DataLoader(infos => this._request(path, pathKey, infos));
+    }
+
+    return loader.load(info);
+  }
+
+  private async _request(
+    path: Array<string | number>,
+    pathKey: string,
+    infos: ReadonlyArray<GraphQLResolveInfo>
+  ): Promise<any> {
+    const parentPath = path.slice();
+    const responseKey = parentPath.pop() as string;
+    const parentKey = parentPath.join('.');
+
+    const combinedInfo: GraphQLResolveInfo = {
+      ...infos[0],
+      fieldNodes: [].concat(...infos.map(info => info.fieldNodes)),
+    };
+
+    let infosByParentKey = this.infos[parentKey];
+    if (infosByParentKey === undefined) {
+      infosByParentKey = this.infos[parentKey] = Object.create(null);
+    }
+    infosByParentKey[responseKey] = combinedInfo;
+
+    const parents = this.externalValues[parentKey];
+    if (parents !== undefined) {
+      parents.forEach(parent => {
+        const data = parent[responseKey];
         if (data !== undefined) {
-          const unpathedErrors = getUnpathedErrors(object);
-          return resolveExternalValue(data, unpathedErrors, this.subschema, this.context, info, this);
+          const unpathedErrors = getUnpathedErrors(parent);
+          const subschema = getSubschema(parent, responseKey);
+          const receiver = getReceiver(parent, subschema);
+          this.onNewExternalValue(
+            pathKey,
+            resolveExternalValue(data, unpathedErrors, subschema, this.context, combinedInfo, receiver)
+          );
         }
-      }
+      });
+    }
+
+    const newExternalValue = this.externalValues[pathKey];
+    if (newExternalValue !== undefined) {
+      return newExternalValue;
     }
 
     const asyncIterable = this.pubsub.subscribe(pathKey);
@@ -87,24 +115,14 @@ export class Receiver {
       this._iterate();
     }
 
-    return this._reduce(asyncIterable, responseKey, info);
-  }
+    const payload = await asyncIterable.next();
+    this.numRequests--;
 
-  private async _reduce(
-    asyncIterable: AsyncIterableIterator<ExternalObject>,
-    responseKey: string,
-    info: GraphQLResolveInfo
-  ): Promise<any> {
-    for await (const parent of asyncIterable) {
-      const data = parent[responseKey];
-      if (data !== undefined) {
-        const unpathedErrors = getUnpathedErrors(parent);
-        return resolveExternalValue(data, unpathedErrors, this.subschema, this.context, info, this);
-      }
-    }
+    return new Array(infos.length).fill(payload.value);
   }
 
   private async _iterate(): Promise<void> {
+    this.iterating = true;
     const iterator = this.asyncIterable[Symbol.asyncIterator]();
 
     let hasNext = true;
@@ -114,43 +132,46 @@ export class Receiver {
       hasNext = !payload.done;
       const asyncResult = payload.value;
 
-      // TODO:
-      // if a payload arrives and contains a path that has already been requested,
-      // that path must be shadow-requested and saved to external values
-      if (asyncResult != null && asyncResult.label !== undefined && asyncResult.path?.[0] === this.fieldName) {
+      if (asyncResult != null && asyncResult.path?.[0] === this.fieldName) {
         const transformedResult = this.resultTransformer(asyncResult);
-        const newExternalValue = externalValueFromResult(transformedResult, {
-          ...this.delegationContext,
-          skipTypeMerging: true,
-        });
+        const newExternalValue = externalValueFromPatchResult(transformedResult, this.delegationContext, this);
 
         const pathKey = asyncResult.path.join('.');
-        this.pubsub.publish(pathKey, newExternalValue);
 
-        const externalValue = this.externalValues[pathKey];
-        if (externalValue != null) {
-          this.externalValues[pathKey] = mergeExternalObjects(
-            this.info.schema,
-            asyncResult.path,
-            externalValue.__typename,
-            newExternalValue,
-            [newExternalValue],
-            [this.deferredSelectionSets[asyncResult.label]]
-          );
-        } else {
-          this.externalValues[pathKey] = newExternalValue;
-        }
+        this.onNewExternalValue(pathKey, newExternalValue);
       }
     }
-  }
-}
+    this.iterating = false;
 
-function getValue(object: any, path: ReadonlyArray<string | number>): any {
-  const pathSegment = path[0];
-  const data = object[pathSegment];
-  if (path.length === 1 || data == null) {
-    return data;
-  } else {
-    getValue(data, path.slice(1));
+    if (!hasNext) {
+      this.pubsub.close();
+    }
+  }
+
+  private onNewExternalValue(pathKey: string, newExternalValue: any): void {
+    const externalValues = this.externalValues[pathKey];
+    if (externalValues === undefined) {
+      this.externalValues[pathKey] = [newExternalValue];
+    } else {
+      externalValues.push(newExternalValue);
+    }
+
+    const infosByParentKey = this.infos[pathKey];
+    if (infosByParentKey !== undefined) {
+      const unpathedErrors = getUnpathedErrors(newExternalValue);
+      Object.keys(infosByParentKey).forEach(responseKey => {
+        const info = infosByParentKey[responseKey];
+        const data = newExternalValue[responseKey];
+        if (data !== undefined) {
+          const subschema = getSubschema(newExternalValue, responseKey);
+          const receiver = getReceiver(newExternalValue, subschema);
+          const subExternalValue = resolveExternalValue(data, unpathedErrors, subschema, this.context, info, receiver);
+          const subPathKey = `${pathKey}.${responseKey}`;
+          this.onNewExternalValue(subPathKey, subExternalValue);
+        }
+      });
+    }
+
+    this.pubsub.publish(pathKey, newExternalValue);
   }
 }
