@@ -100,7 +100,6 @@ export function delegateRequest({
   transforms = [],
   transformedSchema,
   skipValidation,
-  skipTypeMerging,
   binding,
 }: IDelegateRequestOptions): any {
   let operationDefinition: OperationDefinitionNode;
@@ -141,7 +140,6 @@ export function delegateRequest({
     onLocatedError,
     transforms: allTransforms,
     transformedSchema: transformedSchema ?? (subschemaConfig as Subschema)?.transformedSchema ?? targetSchema,
-    skipTypeMerging,
   };
 
   const transformer = new Transformer(delegationContext, binding);

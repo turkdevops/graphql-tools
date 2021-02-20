@@ -310,7 +310,7 @@ describe('defer support', () => {
     expect(results[1]).toEqual({
       data: {
         field: {
-          subfield1: 'subfield1',
+          subfield2: 'subfield2',
         },
       },
       hasNext: true,
@@ -319,7 +319,7 @@ describe('defer support', () => {
     expect(results[2]).toEqual({
       data: {
         field: {
-          subfield2: 'subfield2',
+          subfield1: 'subfield1',
         },
       },
       hasNext: false,

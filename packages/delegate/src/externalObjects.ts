@@ -1,10 +1,11 @@
-import { GraphQLSchema, GraphQLError, GraphQLObjectType, SelectionSetNode } from 'graphql';
+import { GraphQLSchema, GraphQLError, GraphQLObjectType, SelectionSetNode, GraphQLResolveInfo } from 'graphql';
 
 import { relocatedError, GraphQLExecutionContext, collectFields } from '@graphql-tools/utils';
 
 import { SubschemaConfig, ExternalObject } from './types';
 import {
   OBJECT_SUBSCHEMA_SYMBOL,
+  PARENT_INFO_SYMBOL,
   FIELD_SUBSCHEMA_MAP_SYMBOL,
   UNPATHED_ERRORS_SYMBOL,
   RECEIVER_MAP_SYMBOL,
@@ -19,12 +20,14 @@ export function annotateExternalObject(
   object: any,
   errors: Array<GraphQLError>,
   subschema: GraphQLSchema | SubschemaConfig,
+  info: GraphQLResolveInfo,
   receiver: Receiver
 ): ExternalObject {
   const receiverMap: Map<GraphQLSchema | SubschemaConfig, Receiver> = new Map();
   receiverMap.set(subschema, receiver);
   Object.defineProperties(object, {
     [OBJECT_SUBSCHEMA_SYMBOL]: { value: subschema },
+    [PARENT_INFO_SYMBOL]: { value: info },
     [FIELD_SUBSCHEMA_MAP_SYMBOL]: { value: Object.create(null) },
     [UNPATHED_ERRORS_SYMBOL]: { value: errors },
     [RECEIVER_MAP_SYMBOL]: { value: receiverMap },
@@ -32,8 +35,14 @@ export function annotateExternalObject(
   return object;
 }
 
-export function getSubschema(object: ExternalObject, responseKey: string): GraphQLSchema | SubschemaConfig {
-  return object[FIELD_SUBSCHEMA_MAP_SYMBOL][responseKey] ?? object[OBJECT_SUBSCHEMA_SYMBOL];
+export function getSubschema(object: ExternalObject, responseKey?: string): GraphQLSchema | SubschemaConfig {
+  return responseKey === undefined
+    ? object[OBJECT_SUBSCHEMA_SYMBOL]
+    : object[FIELD_SUBSCHEMA_MAP_SYMBOL][responseKey] ?? object[OBJECT_SUBSCHEMA_SYMBOL];
+}
+
+export function getInfo(object: ExternalObject): GraphQLResolveInfo {
+  return object[PARENT_INFO_SYMBOL];
 }
 
 export function getUnpathedErrors(object: ExternalObject): Array<GraphQLError> {

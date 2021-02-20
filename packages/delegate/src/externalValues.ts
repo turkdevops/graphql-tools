@@ -26,21 +26,14 @@ export function externalValueFromPatchResult(
   delegationContext: DelegationContext,
   receiver: Receiver
 ): any {
-  return externalValueFromDataAndErrors(
-    originalResult.data,
-    originalResult.errors ?? [],
-    delegationContext,
-    receiver,
-    true
-  );
+  return externalValueFromDataAndErrors(originalResult.data, originalResult.errors ?? [], delegationContext, receiver);
 }
 
 function externalValueFromDataAndErrors(
   data: any,
   errors: ReadonlyArray<GraphQLError>,
   delegationContext: DelegationContext,
-  receiver?: Receiver,
-  skipTypeMerging = delegationContext.skipTypeMerging
+  receiver?: Receiver
 ): any {
   const { context, info, subschema, returnType, onLocatedError } = delegationContext;
 
@@ -51,7 +44,7 @@ function externalValueFromDataAndErrors(
     onLocatedError
   );
 
-  return resolveExternalValue(newData, unpathedErrors, subschema, context, info, receiver, returnType, skipTypeMerging);
+  return resolveExternalValue(newData, unpathedErrors, subschema, context, info, receiver, returnType);
 }
 
 export function mergeDataAndErrors(

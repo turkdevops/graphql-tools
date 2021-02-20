@@ -61,7 +61,6 @@ export interface DelegationContext {
   onLocatedError?: (originalError: GraphQLError) => GraphQLError;
   transforms: Array<Transform>;
   transformedSchema: GraphQLSchema;
-  skipTypeMerging: boolean;
 }
 
 export type DelegationBinding = (delegationContext: DelegationContext) => Array<Transform>;
@@ -82,7 +81,6 @@ export interface IDelegateToSchemaOptions<TContext = Record<string, any>, TArgs 
   transforms?: Array<Transform>;
   transformedSchema?: GraphQLSchema;
   skipValidation?: boolean;
-  skipTypeMerging?: boolean;
   binding?: DelegationBinding;
 }
 
