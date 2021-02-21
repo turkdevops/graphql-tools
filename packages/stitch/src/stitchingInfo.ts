@@ -4,13 +4,14 @@ import {
   Kind,
   SelectionSetNode,
   isObjectType,
-  isScalarType,
   getNamedType,
   GraphQLInterfaceType,
   SelectionNode,
   print,
   isInterfaceType,
   isLeafType,
+  isUnionType,
+  isInputObjectType,
 } from 'graphql';
 
 import { parseSelectionSet, TypeMap, IResolvers, IFieldResolverOptions } from '@graphql-tools/utils';
@@ -233,12 +234,13 @@ export function completeStitchingInfo(
   const dynamicSelectionSetsByField = Object.create(null);
 
   Object.keys(resolvers).forEach(typeName => {
-    const type = resolvers[typeName];
-    if (isScalarType(type)) {
+    const typeEntry = resolvers[typeName];
+    const type = schema.getType(typeName);
+    if (isLeafType(type) || isUnionType(type) || isInputObjectType(type)) {
       return;
     }
-    Object.keys(type).forEach(fieldName => {
-      const field = type[fieldName] as IFieldResolverOptions;
+    Object.keys(typeEntry).forEach(fieldName => {
+      const field = typeEntry[fieldName] as IFieldResolverOptions;
       if (field.selectionSet) {
         if (typeof field.selectionSet === 'function') {
           if (!(typeName in dynamicSelectionSetsByField)) {

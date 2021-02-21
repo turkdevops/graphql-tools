@@ -6,6 +6,7 @@ export * from './delegateToSchema';
 export * from './delegationBindings';
 export * from './externalObjects';
 export * from './externalValues';
+export * from './getMergedParent';
 export * from './resolveExternalValue';
 export * from './subschemaConfig';
 export * from './transforms';

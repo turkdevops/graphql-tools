@@ -13,7 +13,7 @@ import {
 import { Receiver } from './Receiver';
 
 export function isExternalObject(data: any): data is ExternalObject {
-  return data[UNPATHED_ERRORS_SYMBOL] !== undefined;
+  return data != null && data[UNPATHED_ERRORS_SYMBOL] !== undefined;
 }
 
 export function annotateExternalObject(
