@@ -1,14 +1,18 @@
-import { GraphQLObjectType, GraphQLResolveInfo, defaultFieldResolver } from 'graphql';
+import { GraphQLResolveInfo, defaultFieldResolver } from 'graphql';
 
 import { getResponseKeyFromInfo } from '@graphql-tools/utils';
 
 import { ExternalObject } from './types';
 
 import { resolveExternalValue } from './resolveExternalValue';
-import { getReceiver, getSubschema, getUnpathedErrors, isExternalObject } from './externalObjects';
+import {
+  getInitialPossibleFields,
+  getReceiver,
+  getSubschema,
+  getUnpathedErrors,
+  isExternalObject,
+} from './externalObjects';
 
-import { Subschema } from './Subschema';
-import { isSubschemaConfig } from './subschemaConfig';
 import { getMergedParent } from './getMergedParent';
 
 /**
@@ -39,17 +43,8 @@ export function defaultMergedResolver(
     return resolveExternalValue(data, unpathedErrors, subschema, context, info, receiver);
   }
 
-  // TODO: consider instead of formally checking whether the receiver will resolve,
-  // we could race the original and merged receivers...
-  const sourceSubschema = isSubschemaConfig(subschema)
-    ? (subschema as Subschema)?.transformedSchema ?? subschema.schema
-    : subschema;
-  const parentTypeName = info.parentType.name;
-  const parentType = sourceSubschema.getType(parentTypeName) as GraphQLObjectType;
-  const sourceSubschemaFields = parentType.getFields();
-
   const fieldName = info.fieldNodes[0].name.value;
-  if (fieldName in sourceSubschemaFields) {
+  if (fieldName in getInitialPossibleFields(parent)) {
     const receiver = getReceiver(parent, subschema);
     if (receiver !== undefined) {
       return receiver.request(info);

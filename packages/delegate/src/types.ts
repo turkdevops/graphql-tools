@@ -11,6 +11,7 @@ import {
   VariableDefinitionNode,
   OperationTypeNode,
   GraphQLError,
+  GraphQLFieldMap,
 } from 'graphql';
 
 import DataLoader from 'dataloader';
@@ -22,6 +23,7 @@ import {
   FIELD_SUBSCHEMA_MAP_SYMBOL,
   UNPATHED_ERRORS_SYMBOL,
   RECEIVER_MAP_SYMBOL,
+  INITIAL_POSSIBLE_FIELDS,
 } from './symbols';
 
 import { Subschema } from './Subschema';
@@ -220,6 +222,7 @@ export interface StitchingInfo {
 export interface ExternalObject {
   key: any;
   [OBJECT_SUBSCHEMA_SYMBOL]: GraphQLSchema | SubschemaConfig;
+  [INITIAL_POSSIBLE_FIELDS]: GraphQLFieldMap<any, any>;
   [FIELD_SUBSCHEMA_MAP_SYMBOL]: Record<string, GraphQLSchema | SubschemaConfig>;
   [UNPATHED_ERRORS_SYMBOL]: Array<GraphQLError>;
   [RECEIVER_MAP_SYMBOL]: Map<GraphQLSchema | SubschemaConfig, Receiver>;
