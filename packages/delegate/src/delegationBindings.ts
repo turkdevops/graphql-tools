@@ -4,34 +4,33 @@ import AddSelectionSets from './transforms/AddSelectionSets';
 import ExpandAbstractTypes from './transforms/ExpandAbstractTypes';
 import WrapConcreteTypes from './transforms/WrapConcreteTypes';
 import FilterToSchema from './transforms/FilterToSchema';
-import AddTypenameToAbstract from './transforms/AddTypenameToAbstract';
+import AddTypename from './transforms/AddTypename';
 import AddArgumentsAsVariables from './transforms/AddArgumentsAsVariables';
 
 export function defaultDelegationBinding(delegationContext: DelegationContext): Array<Transform> {
-  let delegationTransforms: Array<Transform> = [];
+  const delegationTransforms: Array<Transform> = [];
 
   const info = delegationContext.info;
   const stitchingInfo: StitchingInfo = info?.schema.extensions?.stitchingInfo;
 
   if (stitchingInfo != null) {
-    delegationTransforms = delegationTransforms.concat([
+    delegationTransforms.push(
       new ExpandAbstractTypes(),
       new AddSelectionSets(
         stitchingInfo.selectionSetsByType,
         stitchingInfo.selectionSetsByField,
         stitchingInfo.dynamicSelectionSetsByField
-      ),
-      new WrapConcreteTypes(),
-    ]);
+      )
+    );
   } else if (info != null) {
-    delegationTransforms = delegationTransforms.concat([new WrapConcreteTypes(), new ExpandAbstractTypes()]);
-  } else {
-    delegationTransforms.push(new WrapConcreteTypes());
+    delegationTransforms.push(new ExpandAbstractTypes());
   }
+
+  delegationTransforms.push(new WrapConcreteTypes());
 
   const transforms = delegationContext.transforms;
   if (transforms != null) {
-    delegationTransforms = delegationTransforms.concat(transforms.slice().reverse());
+    delegationTransforms.push(...transforms.slice().reverse());
   }
 
   const args = delegationContext.args;
@@ -39,7 +38,7 @@ export function defaultDelegationBinding(delegationContext: DelegationContext): 
     delegationTransforms.push(new AddArgumentsAsVariables(args));
   }
 
-  delegationTransforms = delegationTransforms.concat([new FilterToSchema(), new AddTypenameToAbstract()]);
+  delegationTransforms.push(new AddTypename(), new FilterToSchema());
 
   return delegationTransforms;
 }
