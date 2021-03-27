@@ -1,5 +1,26 @@
 # @graphql-tools/delegate
 
+## 7.1.1
+
+### Patch Changes
+
+- f84e7b15: fix(delegate): export executor typings not to have breaking change
+- Updated dependencies [194ac370]
+  - @graphql-tools/utils@7.7.1
+
+## 7.1.0
+
+### Minor Changes
+
+- 58fd4b28: feat(types): add TContext to stitchSchemas and executor
+
+### Patch Changes
+
+- Updated dependencies [58fd4b28]
+- Updated dependencies [43da6b59]
+  - @graphql-tools/batch-execute@7.1.0
+  - @graphql-tools/utils@7.7.0
+
 ## 7.0.10
 
 ### Patch Changes
