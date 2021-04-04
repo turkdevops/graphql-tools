@@ -25,7 +25,6 @@ import { extractFiles, isExtractableFile } from 'extract-files';
 import FormData from 'form-data';
 import 'eventsource/lib/eventsource-polyfill';
 import { Subscription, SubscriptionOptions } from 'sse-z';
-import { RequestInfo, RequestInit, Response } from 'cross-fetch/lib.fetch';
 import { URL } from 'url';
 
 export type AsyncFetchFn = typeof import('cross-fetch').fetch;
