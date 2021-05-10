@@ -1,5 +1,39 @@
 # @graphql-tools/url-loader
 
+## 6.10.1
+
+### Patch Changes
+
+- 491e77cf: enhance(url-loader): start legacy subscriptions connection lazily
+
+## 6.10.0
+
+### Minor Changes
+
+- 20d2c7bc: feat(url-loader): multipart response support
+- 20d2c7bc: feat(url-loader): ability to provide different subscriptionsEndpoint
+  feat(url-loader): ability to provide headers factory that takes executionParams
+- 77d63ab8: feat(url-loader): use fetch-event-source instead of sse-z
+
+### Patch Changes
+
+- Updated dependencies [20d2c7bc]
+  - @graphql-tools/utils@7.9.0
+
+## 6.9.0
+
+### Minor Changes
+
+- 854ce659: - Added support for legacy ws protocol
+  - Ensured that headers are passed into ws connection params
+- 947ccee8: feat(url-loader): ability to provide custom subscriptionsEndpoint
+
+## 6.8.3
+
+### Patch Changes
+
+- 64663c45: chore(url-loader): Use compatible graphq-ws versioning
+
 ## 6.8.2
 
 ### Patch Changes

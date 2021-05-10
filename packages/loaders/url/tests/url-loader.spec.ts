@@ -12,8 +12,8 @@ import { join } from 'path';
 import { useServer } from 'graphql-ws/lib/use/ws';
 import { Server as WSServer } from 'ws';
 import http from 'http';
+import { SubscriptionServer } from 'subscriptions-transport-ws';
 
-const SHOULD_NOT_GET_HERE_ERROR = 'SHOULD_NOT_GET_HERE';
 
 describe('Schema URL Loader', () => {
   const loader = new UrlLoader();
@@ -99,43 +99,44 @@ input TestInput {
 
   const testHost = `http://localhost:3000`;
   const testPath = '/graphql';
-  const testPathChecker = (path: string) => {
-    return path.startsWith(testPath);
-  };
+  const testPathChecker = (path: string) => path.startsWith(testPath);
   const testUrl = `${testHost}${testPath}`;
 
   describe('handle', () => {
 
+    let scope: nock.Scope;
+    afterEach(() => {
+      if (!scope?.isDone()) {
+        scope?.done();
+      }
+    })
+
     it('Should throw an error when introspection is not valid', async () => {
       const brokenData = { data: {} };
-      const scope = nock(testHost).post(testPathChecker).reply(200, brokenData);
+      scope = nock(testHost).post(testPathChecker).reply(200, brokenData);
+
+      expect.assertions(1);
 
       try {
         await loader.load(testUrl, {});
-        throw new Error(SHOULD_NOT_GET_HERE_ERROR);
-      } catch (e) {
-        expect(e.message).not.toBe(SHOULD_NOT_GET_HERE_ERROR);
-        expect(e.message).toBe('Could not obtain introspection result, received: ' + JSON.stringify(brokenData));
+      } catch(e) {
+        expect(e.message).toBe('Could not obtain introspection result, received: ' + JSON.stringify(brokenData))
       }
-
-      scope.done();
     });
 
     it('Should return a valid schema when request is valid', async () => {
-      const server = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker });
+      scope = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker });
 
       const schema = await loader.load(testUrl, {});
-
-      server.done();
 
       expect(schema.schema).toBeDefined();
       expect(printSchemaWithDirectives(schema.schema)).toBeSimilarGqlDoc(testTypeDefs);
     });
 
     it('Should pass default headers', async () => {
-      let headers: Record<string, string> = {};
+      let headers: Record<string, string | string[]> = {};
 
-      const server = mockGraphQLServer({
+      scope = mockGraphQLServer({
         schema: testSchema,
         host: testHost,
         path: testPathChecker,
@@ -146,19 +147,17 @@ input TestInput {
 
       const schema = await loader.load(testUrl, {});
 
-      server.done();
-
       expect(schema).toBeDefined();
       expect(schema.schema).toBeDefined();
       expect(printSchemaWithDirectives(schema.schema)).toBeSimilarGqlDoc(testTypeDefs);
 
-      expect(headers.accept).toContain(`application/json`);
+      expect(Array.isArray(headers.accept) ? headers.accept.join(',') : headers.accept).toContain(`application/json`);
       expect(headers['content-type']).toContain(`application/json`);
     });
 
     it('Should pass extra headers when they are specified as object', async () => {
-      let headers: Record<string, string> = {};
-      const server = mockGraphQLServer({
+      let headers: Record<string, string | string[]> = {};
+      scope = mockGraphQLServer({
         schema: testSchema,
         host: testHost,
         path: testPathChecker,
@@ -169,20 +168,18 @@ input TestInput {
 
       const schema = await loader.load(testUrl, { headers: { Auth: '1' } });
 
-      server.done();
-
       expect(schema).toBeDefined();
       expect(schema.schema).toBeDefined();
       expect(printSchemaWithDirectives(schema.schema)).toBeSimilarGqlDoc(testTypeDefs);
 
-      expect(headers.accept).toContain(`application/json`);
+      expect(Array.isArray(headers.accept) ? headers.accept.join(',') : headers.accept).toContain(`application/json`);
       expect(headers['content-type']).toContain(`application/json`);
       expect(headers.auth).toContain(`1`);
     });
 
     it('Should pass extra headers when they are specified as array', async () => {
-      let headers: Record<string, string> = {};
-      const server = mockGraphQLServer({
+      let headers: Record<string, string | string[]> = {};
+      scope = mockGraphQLServer({
         schema: testSchema,
         host: testHost,
         path: testPathChecker,
@@ -192,13 +189,11 @@ input TestInput {
       });
       const schema = await loader.load(testUrl, { headers: [{ A: '1' }, { B: '2', C: '3' }] });
 
-      server.done();
-
       expect(schema).toBeDefined();
       expect(schema.schema).toBeDefined();
       expect(printSchemaWithDirectives(schema.schema)).toBeSimilarGqlDoc(testTypeDefs);
 
-      expect(headers.accept).toContain(`application/json`);
+      expect(Array.isArray(headers.accept) ? headers.accept.join(',') : headers.accept).toContain(`application/json`);
       expect(headers['content-type']).toContain(`application/json`);
       expect(headers.a).toContain(`1`);
       expect(headers.b).toContain(`2`);
@@ -206,10 +201,8 @@ input TestInput {
     });
 
     it('Should utilize extra introspection options', async () => {
-      const server = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker });
+      scope = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker });
       const source = await loader.load(testUrl, { descriptions: false });
-
-      server.done();
 
       expect(source).toBeDefined();
       expect(source.schema.getQueryType().description).toBeUndefined();
@@ -219,18 +212,18 @@ input TestInput {
       expect(await loader.canLoad(cwd(), {})).toBeFalsy();
     });
     it('should handle useGETForQueries correctly', async () => {
-      const server = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker, method: 'GET' });
+      scope = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker, method: 'GET' });
 
       const source = await loader.load(testUrl, {
         descriptions: false,
         useGETForQueries: true,
       });
 
-      server.done();
-
       const testVariableValue = 'A';
 
-      const server2 = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker, method: 'GET' });
+      scope.done();
+
+      scope = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker, method: 'GET' });
 
       const result = await execute({
         schema: source.schema,
@@ -244,7 +237,7 @@ input TestInput {
         },
       });
 
-      server2.done();
+      scope.done();
 
       expect(result?.errors).toBeFalsy();
 
@@ -257,10 +250,8 @@ input TestInput {
         path: '/graphql',
       };
       const url = address.host + address.path;
-      const server = mockGraphQLServer({ schema: testSchema, host: address.host, path: address.path });
+      scope = mockGraphQLServer({ schema: testSchema, host: address.host, path: address.path });
       const result = await loader.load(url, {});
-
-      server.done();
 
       expect(result.schema).toBeDefined();
       expect(printSchemaWithDirectives(result.schema)).toBeSimilarGqlDoc(testTypeDefs);
@@ -272,14 +263,12 @@ input TestInput {
         path: '/graphql',
       };
       const url = address.host + address.path;
-      const server = mockGraphQLServer({
+      scope = mockGraphQLServer({
         schema: testSchema,
         host: address.host.replace('ws', 'http'),
         path: address.path,
       });
       const result = await loader.load(url, {});
-
-      server.done();
 
       expect(result.schema).toBeDefined();
       expect(printSchemaWithDirectives(result.schema)).toBeSimilarGqlDoc(testTypeDefs);
@@ -291,14 +280,12 @@ input TestInput {
         path: '/graphql',
       };
       const url = address.host + address.path;
-      const server = mockGraphQLServer({
+      scope = mockGraphQLServer({
         schema: testSchema,
         host: address.host.replace('wss', 'https'),
         path: address.path,
       });
       const result = await loader.load(url, {});
-
-      server.done();
 
       expect(result.schema).toBeDefined();
       expect(printSchemaWithDirectives(result.schema)).toBeSimilarGqlDoc(testTypeDefs);
@@ -306,10 +293,8 @@ input TestInput {
     it('should handle .graphql files', async () => {
       const testHost = 'http://localhost:3000';
       const testPath = '/schema.graphql';
-      const server = nock(testHost).get(testPath).reply(200, testTypeDefs);
+      scope = nock(testHost).get(testPath).reply(200, testTypeDefs);
       const result = await loader.load(testHost + testPath, {});
-
-      server.done();
 
       expect(result.schema).toBeDefined();
       expect(printSchemaWithDirectives(result.schema)).toBeSimilarGqlDoc(testTypeDefs);
@@ -320,12 +305,10 @@ input TestInput {
     it('should handle results with handleAsSDL option even if it doesn\'t end with .graphql', async () => {
       const testHost = 'http://localhost:3000';
       const testPath = '/sdl';
-      const server = nock(testHost).get(testPath).reply(200, testTypeDefs);
+      scope = nock(testHost).get(testPath).reply(200, testTypeDefs);
       const result = await loader.load(testHost + testPath, {
         handleAsSDL: true,
       });
-
-      server.done();
 
       expect(result.schema).toBeDefined();
       expect(printSchemaWithDirectives(result.schema)).toBeSimilarGqlDoc(testTypeDefs);
@@ -333,10 +316,13 @@ input TestInput {
       expect(result.document).toBeDefined();
       expect(print(result.document)).toBeSimilarGqlDoc(testTypeDefs);
     })
-    it('should handle subscriptions', async (done) => {
+    it('should handle subscriptions - new protocol', async (done) => {
       const testUrl = 'http://localhost:8081/graphql';
       const { schema } = await loader.load(testUrl, {
         customFetch: async () => ({
+          headers: {
+            'content-type': 'application/json'
+          },
           json: async () => ({
             data: introspectionFromSchema(testSchema),
           })
@@ -398,16 +384,81 @@ input TestInput {
       });
 
     });
+    it('should handle subscriptions - legacy protocol', async (done) => {
+      const testUrl = 'http://localhost:8081/graphql';
+      const { schema } = await loader.load(testUrl, {
+        customFetch: async () => ({
+          headers: {
+            'content-type': 'application/json'
+          },
+          json: async () => ({
+            data: introspectionFromSchema(testSchema),
+          })
+        }) as any,
+        useWebSocketLegacyProtocol: true,
+      });
+
+      const httpServer = http.createServer(function weServeSocketsOnly(_, res) {
+        res.writeHead(404);
+        res.end();
+      });
+
+
+      httpServer.listen(8081);
+
+      const subscriptionServer = SubscriptionServer.create(
+        {
+          schema: testSchema,
+          execute,
+          subscribe,
+        },
+        {
+          server: httpServer,
+          path: '/graphql',
+        },
+      );
+
+      const asyncIterator = await subscribe({
+        schema,
+        document: parse(/* GraphQL */`
+          subscription TestMessage {
+            testMessage {
+              number
+            }
+          }
+        `),
+        contextValue: {},
+      }) as AsyncIterableIterator<ExecutionResult>;
+
+      expect(asyncIterator['errors']).toBeFalsy();
+      expect(asyncIterator['errors']?.length).toBeFalsy();
+
+
+      // eslint-disable-next-line no-inner-declarations
+      async function getNextResult() {
+        const result = await asyncIterator.next();
+        expect(result?.done).toBeFalsy();
+        return result?.value?.data?.testMessage?.number;
+      }
+
+      expect(await getNextResult()).toBe(0);
+      expect(await getNextResult()).toBe(1);
+      expect(await getNextResult()).toBe(2);
+
+      await asyncIterator.return();
+      subscriptionServer.close();
+      httpServer.close(done);
+    });
     it('should handle multipart requests', async () => {
-      let server = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker, method: 'POST' });
+      scope = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker, method: 'POST' });
 
       const { schema } = await loader.load(testUrl, {
         multipart: true,
       });
 
-      server.done();
+      scope.done();
 
-      server = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker, method: 'POST' })
+      scope = mockGraphQLServer({ schema: testSchema, host: testHost, path: testPathChecker, method: 'POST' })
 
       const fileName = 'testfile.txt';
 
@@ -429,8 +480,6 @@ input TestInput {
           nonObjectVar: 'somefilename.txt'
         },
       })
-
-      server.done();
 
       const content = readFileSync(absoluteFilePath, 'utf8')
 

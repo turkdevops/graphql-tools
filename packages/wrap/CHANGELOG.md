@@ -1,5 +1,31 @@
 # @graphql-tools/wrap
 
+## 7.0.8
+
+### Patch Changes
+
+- 22a9f3da: fix(deps): follow package conventions on when to pin
+- Updated dependencies [22a9f3da]
+  - @graphql-tools/delegate@7.1.5
+  - @graphql-tools/schema@7.1.5
+
+## 7.0.7
+
+### Patch Changes
+
+- 36f19ddb: fix(TransformQuery): pass delegation context to query and result transformers for required flexibility
+- Updated dependencies [dbdb78e0]
+  - @graphql-tools/utils@7.8.1
+
+## 7.0.6
+
+### Patch Changes
+
+- 61da3e82: use value-or-promise to streamline working with sync values or async promises
+- Updated dependencies [61da3e82]
+  - @graphql-tools/delegate@7.1.4
+  - @graphql-tools/schema@7.1.4
+
 ## 7.0.5
 
 ### Patch Changes

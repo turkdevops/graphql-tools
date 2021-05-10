@@ -1,5 +1,41 @@
 # @graphql-tools/utils
 
+## 7.9.1
+
+### Patch Changes
+
+- be23817f: enhance(utils): do not extract default resolvers
+
+## 7.9.0
+
+### Minor Changes
+
+- 20d2c7bc: feat(utils): add withCancel
+
+## 7.8.1
+
+### Patch Changes
+
+- dbdb78e0: fix(visitResult): don't throw on encountering \_\_typename in request (#2860)
+
+## 7.8.0
+
+### Minor Changes
+
+- 03c579b1: enhance(utils): astFromDirective doesn't need schema anymore
+
+## 7.7.3
+
+### Patch Changes
+
+- d2a17c70: enhance(printSchemaWithDirectives): show directives before other definitions #2752
+
+## 7.7.2
+
+### Patch Changes
+
+- a4f1ee58: \_\_ is reserved for introspection
+
 ## 7.7.1
 
 ### Patch Changes
