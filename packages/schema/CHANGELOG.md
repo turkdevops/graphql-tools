@@ -1,5 +1,16 @@
 # @graphql-tools/schema
 
+## 7.2.0
+
+### Minor Changes
+
+- 8f9b9299: Introduce `buildASTSchemaWithResolvers` - slim version of makeExecutableSchema
+
+### Patch Changes
+
+- Updated dependencies [982c8f53]
+  - @graphql-tools/utils@7.10.1
+
 ## 7.1.5
 
 ### Patch Changes
