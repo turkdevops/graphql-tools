@@ -1,4 +1,4 @@
-import { NamedTypeNode } from 'graphql/language/ast';
+import { NamedTypeNode } from 'graphql';
 import { Config } from '.';
 import { compareNodes } from '@graphql-tools/utils';
 
@@ -7,9 +7,9 @@ function alreadyExists(arr: ReadonlyArray<NamedTypeNode>, other: NamedTypeNode):
 }
 
 export function mergeNamedTypeArray(
-  first: ReadonlyArray<NamedTypeNode>,
-  second: ReadonlyArray<NamedTypeNode>,
-  config: Config
+  first: ReadonlyArray<NamedTypeNode> = [],
+  second: ReadonlyArray<NamedTypeNode> = [],
+  config: Config = {}
 ): NamedTypeNode[] {
   const result = [...second, ...first.filter(d => !alreadyExists(second, d))];
   if (config && config.sort) {

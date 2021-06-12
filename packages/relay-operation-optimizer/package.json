@@ -21,8 +21,18 @@
     "relay"
   ],
   "sideEffects": false,
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.esm.js",
+  "main": "dist/index.js",
+   "module": "dist/index.mjs",
+ "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    },
+    "./*": {
+      "require": "./dist/*.js",
+      "import": "./dist/*.mjs"
+    }
+  },
   "typings": "dist/index.d.ts",
   "typescript": {
     "definition": "dist/index.d.ts"
@@ -33,7 +43,7 @@
   "dependencies": {
     "@graphql-tools/utils": "^7.1.0",
     "relay-compiler": "11.0.2",
-    "tslib": "~2.2.0"
+    "tslib": "~2.3.0"
   },
   "devDependencies": {
     "@types/relay-compiler": "8.0.0"

@@ -1,6 +1,6 @@
 /* eslint-disable no-case-declarations */
 /// <reference lib="dom" />
-import { print, IntrospectionOptions, DocumentNode, Kind, parse, buildASTSchema, GraphQLError } from 'graphql';
+import { print, IntrospectionOptions, DocumentNode, Kind, GraphQLError } from 'graphql';
 import {
   AsyncExecutor,
   Executor,
@@ -15,6 +15,7 @@ import {
   ExecutionParams,
   mapAsyncIterator,
   withCancel,
+  parseGraphQLSDL,
 } from '@graphql-tools/utils';
 import { isWebUri } from 'valid-url';
 import { fetch as crossFetch } from 'cross-fetch';
@@ -30,7 +31,7 @@ import { fetchEventSource, FetchEventSourceInit } from '@microsoft/fetch-event-s
 import { ConnectionParamsOptions, SubscriptionClient as LegacySubscriptionClient } from 'subscriptions-transport-ws';
 import AbortController from 'abort-controller';
 import { meros } from 'meros';
-import { merge, set } from 'lodash';
+import _ from 'lodash';
 
 export type AsyncFetchFn = typeof import('cross-fetch').fetch;
 export type SyncFetchFn = (input: RequestInfo, init?: RequestInit) => SyncResponse;
@@ -325,7 +326,7 @@ export class UrlLoader implements DocumentLoader<LoadFromUrlOptions> {
                   if (chunk.path) {
                     if (chunk.data) {
                       const path: Array<string | number> = ['data'];
-                      merge(response, set({}, path.concat(chunk.path), chunk.data));
+                      _.merge(response, _.set({}, path.concat(chunk.path), chunk.data));
                     }
 
                     if (chunk.errors) {
@@ -500,7 +501,7 @@ export class UrlLoader implements DocumentLoader<LoadFromUrlOptions> {
         return customFetch as any;
       }
     }
-    return async ? typeof fetch === 'undefined' ? crossFetch : fetch : syncFetch;
+    return async ? (typeof fetch === 'undefined' ? crossFetch : fetch) : syncFetch;
   }
 
   private getHeadersFromOptions(customHeaders: Headers, executionParams: ExecutionParams): Record<string, string> {
@@ -602,7 +603,8 @@ export class UrlLoader implements DocumentLoader<LoadFromUrlOptions> {
     const subscriptionsEndpoint = options.subscriptionsEndpoint || pointer;
     let subscriber: Subscriber;
     if (options.useSSEForSubscription) {
-      const asyncFetchFn: any = (...args: any[]) => this.getFetch(options?.customFetch, asyncImport, true).then((asyncFetch: any) => asyncFetch(...args));
+      const asyncFetchFn: any = (...args: any[]) =>
+        this.getFetch(options?.customFetch, asyncImport, true).then((asyncFetch: any) => asyncFetch(...args));
       subscriber = this.buildSSESubscriber(
         subscriptionsEndpoint,
         options.headers,
@@ -652,14 +654,7 @@ export class UrlLoader implements DocumentLoader<LoadFromUrlOptions> {
       headers,
     });
     const schemaString = await response.text();
-    const document = parse(schemaString, options);
-    const schema = buildASTSchema(document, options);
-    return {
-      location: pointer,
-      rawSDL: schemaString,
-      document,
-      schema,
-    };
+    return parseGraphQLSDL(pointer, schemaString, options);
   }
 
   handleSDLSync(pointer: SchemaPointerSingle, options: LoadFromUrlOptions): Source {
@@ -671,14 +666,7 @@ export class UrlLoader implements DocumentLoader<LoadFromUrlOptions> {
       headers,
     });
     const schemaString = response.text();
-    const document = parse(schemaString, options);
-    const schema = buildASTSchema(document, options);
-    return {
-      location: pointer,
-      rawSDL: schemaString,
-      document,
-      schema,
-    };
+    return parseGraphQLSDL(pointer, schemaString, options);
   }
 
   async load(pointer: SchemaPointerSingle, options: LoadFromUrlOptions): Promise<Source> {

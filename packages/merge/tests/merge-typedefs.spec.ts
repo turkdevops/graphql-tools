@@ -1,3 +1,4 @@
+import '../../testing/to-be-similar-gql-doc';
 import { mergeDirectives, mergeTypeDefs, mergeGraphQLTypes } from '../src';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { stitchSchemas } from '@graphql-tools/stitch'
@@ -6,6 +7,7 @@ import { stripWhitespaces } from './utils';
 import gql from 'graphql-tag';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import {jest} from '@jest/globals';
 
 const introspectionSchema = JSON.parse(readFileSync(join(__dirname, './schema.json'), 'utf8'));
 
@@ -177,6 +179,7 @@ describe('Merge TypeDefs', () => {
       expect(mergedArray[0].kind).toBe('ObjectTypeDefinition');
       expect(mergedArray[1].kind).toBe('ObjectTypeDefinition');
       expect(mergedArray[2].kind).toBe('SchemaDefinition');
+
     });
 
     it('should return the correct definition of Schema', () => {
@@ -186,8 +189,8 @@ describe('Merge TypeDefs', () => {
 
       expect(mergedArray.length).toBe(3);
       expect(mergedArray[0].kind).toBe('ObjectTypeDefinition');
-      expect(mergedArray[1].kind).toBe('ObjectTypeDefinition');
-      expect(mergedArray[2].kind).toBe('SchemaDefinition');
+      expect(mergedArray[1].kind).toBe('SchemaDefinition');
+      expect(mergedArray[2].kind).toBe('ObjectTypeDefinition');
     });
 
     it('should accept root schema object', () => {
@@ -210,8 +213,8 @@ describe('Merge TypeDefs', () => {
 
       expect(mergedArray.length).toBe(3);
       expect(mergedArray[0].kind).toBe('ObjectTypeDefinition');
-      expect(mergedArray[1].kind).toBe('ObjectTypeDefinition');
-      expect(mergedArray[2].kind).toBe('SchemaDefinition');
+      expect(mergedArray[1].kind).toBe('SchemaDefinition');
+      expect(mergedArray[2].kind).toBe('ObjectTypeDefinition');
     });
   });
 
@@ -658,7 +661,7 @@ describe('Merge TypeDefs', () => {
         'type Query { f2: String }',
       ]);
 
-      expect(stripWhitespaces(print(merged))).toBe(
+      expect(stripWhitespaces(print(merged))).toBeSimilarGqlDoc(
         stripWhitespaces(/* GraphQL */`
         type Query {
           f1: String
@@ -710,7 +713,7 @@ describe('Merge TypeDefs', () => {
         `,
       ]);
 
-      expect(stripWhitespaces(print(merged))).toBe(
+      expect(stripWhitespaces(print(merged))).toBeSimilarGqlDoc(
         stripWhitespaces(/* GraphQL */`
         type Query {
           f1: String
