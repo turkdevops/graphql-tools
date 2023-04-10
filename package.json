@@ -1,0 +1,7 @@
+{
+  // ...
+  "graphql-inspector": {
+    "branch": "master",
+    "schema": "schema.graphql"
+  }
+}
